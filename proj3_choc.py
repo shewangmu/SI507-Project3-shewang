@@ -128,6 +128,36 @@ def process_bars(command,level,param):
         param[4] = command[level].split('=')[1]
     process_bars(command,level+1,param)
 
+def process_company(command, level, param):
+    if(level==len(command)):
+        return
+    
+    if(command[level].split('=')[0]=='country'):
+        param[1] = "where Countries.Alpha2='{}'".format(command[level].split('=')[1])
+    
+    elif(command[level].split('=')[0]=='region'):
+        param[1] = "where Countries.region='{}'".format(command[level].split('=')[1])
+        
+    elif(command[level]=='ratings'):
+        pass
+    
+    elif(command[level]=='cocoa'):
+        param[0] = 'AVG(CocoaPercent)'
+        param[2] = 'AVG(CocoaPercent)'
+        
+    elif(command[level]=='bars_sold'):
+        param[0] = 'count(SpecificBeanBarName)'
+        param[2] = 'count(SpecificBeanBarName)'
+    
+    elif(command[level].split('=')[0]=='top'):
+        param[4] = command[level].split('=')[1]
+        
+    elif(command[level].split('=')[0]=='bottom'):
+        param[3] = 'ASC'
+        param[4] = command[level].split('=')[1]
+        
+    process_company(command, level+1, param)
+
 def process_command(command):
     command = command.split(' ')
     conn  = sqlite3.connect(DBNAME)
@@ -152,10 +182,29 @@ def process_command(command):
         '''.format(join, where, order, seq, limit)
         cur.execute(statement)
         return cur.fetchall()
-    pass
+    if(command[0]=='companies'):
+        select = 'AVG(Rating)'
+        where = ''
+        order = 'AVG(Rating)'
+        seq = 'DESC'
+        limit = 10
+        param = [select, where, order,seq,limit]
+        process_company(command[1:],0,param)
+        select, where,order,seq,limit = param
+        statement = '''
+        select Company, CompanyLocation, {}
+        from Bars
+        inner join Countries on Countries.EnglishName=Bars.CompanyLocation
+        {}
+        group by Bars.Company
+        having count(SpecificBeanBarName)>4
+        order by {} {}
+        limit {}
+        '''.format(select, where, order, seq, limit)
+        cur.execute(statement)
+        return cur.fetchall()
+        
     
-
-
 def load_help_text():
     with open('help.txt') as f:
         return f.read()
@@ -175,7 +224,4 @@ def interactive_prompt():
 
 if __name__=="__main__":
     #interactive_prompt()
-    reload_data()
-    param = ['','Rating','DESC','',10]
-    command = 'bars cocoa bottom=10'
-    res = process_command(command)
+    res = process_command('companies cocoa top=5')
