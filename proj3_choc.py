@@ -29,7 +29,7 @@ def reload_data():
     	`SpecificBeanBarName`	TEXT,
     	`REF`	TEXT,
         'ReviewDate'  TEXT,
-    	`CocoaPercent`	TEXT,
+    	`CocoaPercent`	REAL,
     	`CompanyLocation`	REAL,
     	`CompanyLocationId`	INTEGER,
     	`Rating`	REAL,
@@ -56,8 +56,6 @@ def reload_data():
     conn.commit()
     
     country = json.loads(open(COUNTRIESJSON).read())
-    name_dic = {}
-    i=1
     for line in country:
         Alpha2 = line['alpha2Code']
         Alpha3 = line['alpha3Code']
@@ -86,8 +84,9 @@ def reload_data():
             Id2 = b[0]
         else:
             Id2 = None
+        percent = float(line[4].strip('%'))
         cur.execute("INSERT INTO 'Bars' (Company, SpecificBeanBarName, REF, ReviewDate,CocoaPercent, CompanyLocation,CompanyLocationId, Rating,BeanType,BroadBeanOrigin,BroadBeanOriginId) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                            (line[0],line[1],line[2],line[3],line[4],line[5],Id1,line[6],line[7],line[8],Id2))
+                            (line[0],line[1],line[2],line[3],percent,line[5],Id1,line[6],line[7],line[8],Id2))
     
     conn.commit()
     conn.close()
@@ -96,8 +95,64 @@ def reload_data():
 
 
 # Part 2: Implement logic to process user commands
+def process_bars(command,level,param):
+    if(level==len(command)):
+        return
+    if(command[level].split('=')[0] == 'sellcountry'): 
+        param[0] = 'inner join Countries on Countries.EnglishName=Bars.CompanyLocation'
+        param[3] = 'where Countries.Alpha2=\'{}\''.format(command[level].split('=')[1])
+
+    elif(command[level].split('=')[0] == 'sourcecountry'):
+        param[0] = 'inner join Countries on Countries.EnglishName=Bars.BroadBeanOrigin'
+        param[3] = 'where Countries.Alpha2=\'{}\''.format(command[level].split('=')[1])
+    
+    elif(command[level].split('=')[0]=='sellregion'):
+        param[0] = 'inner join Countries on Countries.EnglishName=Bars.CompanyLocation'
+        param[3] = 'where Countries.region=\'{}\''.format(command[level].split('=')[1])
+
+    elif(command[level].split('=')[0]=='sourceregion'):
+        param[0] = 'inner join Countries on Countries.EnglishName=Bars.BroadBeanOrigin'
+        param[3] = 'where Countries.region=\'{}\''.format(command[level].split('=')[1])
+    
+    elif(command[level]=='ratings'):
+        pass
+    
+    elif(command[level]=='cocoa'):
+        param[1] = 'CocoaPercent'
+         
+    elif(command[level].split('=')[0]=='top'):
+        param[4] = command[level].split('=')[1]
+    
+    else:
+        param[2] = 'ASC'
+        param[4] = command[level].split('=')[1]
+    process_bars(command,level+1,param)
+
 def process_command(command):
-    res = []
+    command = command.split(' ')
+    conn  = sqlite3.connect(DBNAME)
+    cur = conn.cursor()
+    if(command[0]=='bars'):
+        join = ''
+        order = 'Rating'
+        seq = 'DESC'
+        where = ''
+        limit = 10
+        param = [join,order,seq,where,limit]
+        process_bars(command[1:],0,param)
+        join,order,seq,where,limit = param
+        statement = '''
+        select SpecificBeanBarName,Company, CompanyLocation,
+        Rating, CocoaPercent, BroadBeanOrigin
+        from Bars
+        {}
+        {}
+        order by {} {}
+        limit {}
+        '''.format(join, where, order, seq, limit)
+        cur.execute(statement)
+        return cur.fetchall()
+    pass
     
 
 
@@ -119,4 +174,8 @@ def interactive_prompt():
 # Make sure nothing runs or prints out when this file is run as a module
 
 if __name__=="__main__":
-    interactive_prompt()
+    #interactive_prompt()
+    reload_data()
+    param = ['','Rating','DESC','',10]
+    command = 'bars cocoa bottom=10'
+    res = process_command(command)
