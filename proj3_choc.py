@@ -1,6 +1,7 @@
 import sqlite3
 import csv
 import json
+import process
 
 # proj3_choc.py
 # You can change anything in this file you want as long as you pass the tests
@@ -95,68 +96,7 @@ def reload_data():
 
 
 # Part 2: Implement logic to process user commands
-def process_bars(command,level,param):
-    if(level==len(command)):
-        return
-    if(command[level].split('=')[0] == 'sellcountry'): 
-        param[0] = 'inner join Countries on Countries.EnglishName=Bars.CompanyLocation'
-        param[3] = 'where Countries.Alpha2=\'{}\''.format(command[level].split('=')[1])
 
-    elif(command[level].split('=')[0] == 'sourcecountry'):
-        param[0] = 'inner join Countries on Countries.EnglishName=Bars.BroadBeanOrigin'
-        param[3] = 'where Countries.Alpha2=\'{}\''.format(command[level].split('=')[1])
-    
-    elif(command[level].split('=')[0]=='sellregion'):
-        param[0] = 'inner join Countries on Countries.EnglishName=Bars.CompanyLocation'
-        param[3] = 'where Countries.region=\'{}\''.format(command[level].split('=')[1])
-
-    elif(command[level].split('=')[0]=='sourceregion'):
-        param[0] = 'inner join Countries on Countries.EnglishName=Bars.BroadBeanOrigin'
-        param[3] = 'where Countries.region=\'{}\''.format(command[level].split('=')[1])
-    
-    elif(command[level]=='ratings'):
-        pass
-    
-    elif(command[level]=='cocoa'):
-        param[1] = 'CocoaPercent'
-         
-    elif(command[level].split('=')[0]=='top'):
-        param[4] = command[level].split('=')[1]
-    
-    else:
-        param[2] = 'ASC'
-        param[4] = command[level].split('=')[1]
-    process_bars(command,level+1,param)
-
-def process_company(command, level, param):
-    if(level==len(command)):
-        return
-    
-    if(command[level].split('=')[0]=='country'):
-        param[1] = "where Countries.Alpha2='{}'".format(command[level].split('=')[1])
-    
-    elif(command[level].split('=')[0]=='region'):
-        param[1] = "where Countries.region='{}'".format(command[level].split('=')[1])
-        
-    elif(command[level]=='ratings'):
-        pass
-    
-    elif(command[level]=='cocoa'):
-        param[0] = 'AVG(CocoaPercent)'
-        param[2] = 'AVG(CocoaPercent)'
-        
-    elif(command[level]=='bars_sold'):
-        param[0] = 'count(SpecificBeanBarName)'
-        param[2] = 'count(SpecificBeanBarName)'
-    
-    elif(command[level].split('=')[0]=='top'):
-        param[4] = command[level].split('=')[1]
-        
-    elif(command[level].split('=')[0]=='bottom'):
-        param[3] = 'ASC'
-        param[4] = command[level].split('=')[1]
-        
-    process_company(command, level+1, param)
 
 def process_command(command):
     command = command.split(' ')
@@ -169,7 +109,7 @@ def process_command(command):
         where = ''
         limit = 10
         param = [join,order,seq,where,limit]
-        process_bars(command[1:],0,param)
+        process.process_bars(command[1:],0,param)
         join,order,seq,where,limit = param
         statement = '''
         select SpecificBeanBarName,Company, CompanyLocation,
@@ -189,7 +129,7 @@ def process_command(command):
         seq = 'DESC'
         limit = 10
         param = [select, where, order,seq,limit]
-        process_company(command[1:],0,param)
+        process.process_company(command[1:],0,param)
         select, where,order,seq,limit = param
         statement = '''
         select Company, CompanyLocation, {}
@@ -203,7 +143,31 @@ def process_command(command):
         '''.format(select, where, order, seq, limit)
         cur.execute(statement)
         return cur.fetchall()
+    if(command[0]=='countries'):
+        select_country = 'CompanyLocation'
+        order = 'AVG(Rating)'
+        where = ''
+        seq = 'desc'
+        limit = 10
+        param = [select_country,order,where,seq,limit]
+        process.process_country(command[1:],0,param)
+        select_country,order,where,seq,limit = param
+        statement = '''
+        select {}, Countries.Region, {}
+        from Bars
+        inner join Countries on Countries.EnglishName=Bars.{}
+        {}
+        group by Bars.{}
+        having count(SpecificBeanBarName)>4
+        order by {} {}
+        limit {}
+        '''.format(select_country,order,select_country,where,select_country,order,seq,limit)
+        cur.execute(statement)
+        return cur.fetchall()
         
+        
+        
+
     
 def load_help_text():
     with open('help.txt') as f:
@@ -224,4 +188,4 @@ def interactive_prompt():
 
 if __name__=="__main__":
     #interactive_prompt()
-    res = process_command('companies cocoa top=5')
+    res = process_command('countries sources ratings bottom=5')
