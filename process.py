@@ -90,3 +90,30 @@ def process_country(command, level, param):
         param[4] = command[level].strip().split('=')[1]
         param[3] = 'asc'
     process_country(command, level+1, param)
+           
+def process_regions(command,level,param):
+    if(level==len(command)):
+        return
+    
+    if(command[level]=='sellers'):
+        param[0] = 'CompanyLocation'
+        
+    elif(command[level]=='sources'):
+        param[0] = 'BroadBeanOrigin'
+    
+    elif(command[level]=='ratings'):
+        pass
+        
+    elif(command[level]=='cocoa'):
+        param[1] = 'AVG(Cocoapercent)'
+        
+    elif(command[level]=='bars_sold'):
+        param[1] = 'count(SpecificBeanBarName)'
+        
+    elif(command[level].split('=')[0]=='top'):
+        param[3] = command[level].strip().split('=')[1]
+    
+    else:
+        param[3] = command[level].strip().split('=')[1]
+        param[2] = 'asc'
+    process_regions(command, level+1, param)

@@ -164,8 +164,26 @@ def process_command(command):
         '''.format(select_country,order,select_country,where,select_country,order,seq,limit)
         cur.execute(statement)
         return cur.fetchall()
-        
-        
+    if(command[0]=='regions'):
+        select_country = 'CompanyLocation'
+        order = 'AVG(Rating)'
+        seq = 'desc'
+        limit = 10
+        param = [select_country,order,seq,limit]
+        process.process_regions(command[1:],0,param)
+        select_country,order,seq,limit = param
+        statement = '''
+        select Countries.Region, {}
+        from Bars
+        inner join Countries on Countries.EnglishName=Bars.{}
+        group by Countries.Region
+        having count(SpecificBeanBarName)>4
+        order by {} {}
+        limit {}
+        '''.format(order,select_country,order,seq,limit)
+        cur.execute(statement)
+        return cur.fetchall()
+
         
 
     
@@ -188,4 +206,4 @@ def interactive_prompt():
 
 if __name__=="__main__":
     #interactive_prompt()
-    res = process_command('countries sources ratings bottom=5')
+    res = process_command('regions sources bars_sold top=5')
