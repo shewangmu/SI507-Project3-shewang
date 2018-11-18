@@ -102,87 +102,92 @@ def process_command(command):
     command = command.split(' ')
     conn  = sqlite3.connect(DBNAME)
     cur = conn.cursor()
-    if(command[0]=='bars'):
-        join = ''
-        order = 'Rating'
-        seq = 'DESC'
-        where = ''
-        limit = 10
-        param = [join,order,seq,where,limit]
-        process.process_bars(command[1:],0,param)
-        join,order,seq,where,limit = param
-        statement = '''
-        select SpecificBeanBarName,Company, CompanyLocation,
-        Rating, CocoaPercent, BroadBeanOrigin
-        from Bars
-        {}
-        {}
-        order by {} {}
-        limit {}
-        '''.format(join, where, order, seq, limit)
-        cur.execute(statement)
-        return cur.fetchall()
-    if(command[0]=='companies'):
-        select = 'AVG(Rating)'
-        where = ''
-        order = 'AVG(Rating)'
-        seq = 'DESC'
-        limit = 10
-        param = [select, where, order,seq,limit]
-        process.process_company(command[1:],0,param)
-        select, where,order,seq,limit = param
-        statement = '''
-        select Company, CompanyLocation, {}
-        from Bars
-        inner join Countries on Countries.EnglishName=Bars.CompanyLocation
-        {}
-        group by Bars.Company
-        having count(SpecificBeanBarName)>4
-        order by {} {}
-        limit {}
-        '''.format(select, where, order, seq, limit)
-        cur.execute(statement)
-        return cur.fetchall()
-    if(command[0]=='countries'):
-        select_country = 'CompanyLocation'
-        order = 'AVG(Rating)'
-        where = ''
-        seq = 'desc'
-        limit = 10
-        param = [select_country,order,where,seq,limit]
-        process.process_country(command[1:],0,param)
-        select_country,order,where,seq,limit = param
-        statement = '''
-        select {}, Countries.Region, {}
-        from Bars
-        inner join Countries on Countries.EnglishName=Bars.{}
-        {}
-        group by Bars.{}
-        having count(SpecificBeanBarName)>4
-        order by {} {}
-        limit {}
-        '''.format(select_country,order,select_country,where,select_country,order,seq,limit)
-        cur.execute(statement)
-        return cur.fetchall()
-    if(command[0]=='regions'):
-        select_country = 'CompanyLocation'
-        order = 'AVG(Rating)'
-        seq = 'desc'
-        limit = 10
-        param = [select_country,order,seq,limit]
-        process.process_regions(command[1:],0,param)
-        select_country,order,seq,limit = param
-        statement = '''
-        select Countries.Region, {}
-        from Bars
-        inner join Countries on Countries.EnglishName=Bars.{}
-        group by Countries.Region
-        having count(SpecificBeanBarName)>4
-        order by {} {}
-        limit {}
-        '''.format(order,select_country,order,seq,limit)
-        cur.execute(statement)
-        return cur.fetchall()
+    try:
+        if(command[0]=='bars'):
+            join = ''
+            order = 'Rating'
+            seq = 'DESC'
+            where = ''
+            limit = 10
+            param = [join,order,seq,where,limit]
+            process.process_bars(command[1:],0,param)
+            join,order,seq,where,limit = param
+            statement = '''
+            select SpecificBeanBarName,Company, CompanyLocation,
+            Rating, CocoaPercent, BroadBeanOrigin
+            from Bars
+            {}
+            {}
+            order by {} {}
+            limit {}
+            '''.format(join, where, order, seq, limit)
+            cur.execute(statement)
+            return cur.fetchall()
+        elif(command[0]=='companies'):
+            select = 'AVG(Rating)'
+            where = ''
+            order = 'AVG(Rating)'
+            seq = 'DESC'
+            limit = 10
+            param = [select, where, order,seq,limit]
+            process.process_company(command[1:],0,param)
+            select, where,order,seq,limit = param
+            statement = '''
+            select Company, CompanyLocation, {}
+            from Bars
+            inner join Countries on Countries.EnglishName=Bars.CompanyLocation
+            {}
+            group by Bars.Company
+            having count(SpecificBeanBarName)>4
+            order by {} {}
+            limit {}
+            '''.format(select, where, order, seq, limit)
+            cur.execute(statement)
+            return cur.fetchall()
+        elif(command[0]=='countries'):
+            select_country = 'CompanyLocation'
+            order = 'AVG(Rating)'
+            where = ''
+            seq = 'desc'
+            limit = 10
+            param = [select_country,order,where,seq,limit]
+            process.process_country(command[1:],0,param)
+            select_country,order,where,seq,limit = param
+            statement = '''
+            select {}, Countries.Region, {}
+            from Bars
+            inner join Countries on Countries.EnglishName=Bars.{}
+            {}
+            group by Bars.{}
+            having count(SpecificBeanBarName)>4
+            order by {} {}
+            limit {}
+            '''.format(select_country,order,select_country,where,select_country,order,seq,limit)
+            cur.execute(statement)
+            return cur.fetchall()
+        elif(command[0]=='regions'):
+            select_country = 'CompanyLocation'
+            order = 'AVG(Rating)'
+            seq = 'desc'
+            limit = 10
+            param = [select_country,order,seq,limit]
+            process.process_regions(command[1:],0,param)
+            select_country,order,seq,limit = param
+            statement = '''
+            select Countries.Region, {}
+            from Bars
+            inner join Countries on Countries.EnglishName=Bars.{}
+            group by Countries.Region
+            having count(SpecificBeanBarName)>4
+            order by {} {}
+            limit {}
+            '''.format(order,select_country,order,seq,limit)
+            cur.execute(statement)
+            return cur.fetchall()
+        else:
+            return "Command not recognized: "
+    except:
+        return ''
 
         
 
@@ -201,9 +206,49 @@ def interactive_prompt():
         if response == 'help':
             print(help_text)
             continue
+        elif response == 'exit':
+            print('bye')
+            break
+        else:
+            res = process_command(response)
+            if(type(res)==str and len(res) !=0):
+                res += response
+                print(res)
+            elif(len(res)==0):
+                print()
+            else:
+                print_result(response, res)
+            continue
+
+def print_result(command, res):
+    result = []
+    for line in res:
+        result.append(list(line))
+    if(command.split()[0] =='companies'):
+        for line in result:
+            line[2] = round(line[2],1)
+            
+    elif(command.split()[0]=='countries'):
+        for line in result:
+            line[2] = round(line[2],1)
+    
+    elif(command.split()[0]=='regions'):
+        for line in result:
+            line[1] = round(line[1],1)
+    else:
+        for line in result:
+            line[4] = str(line[4])+'%'
+        
+        
+    for line in result:
+        s = ''
+        for word in line:
+            if(type(word)==str and len(word)>12):
+                word = word[:12]+'...'
+            s += '{:<20}'.format(word)
+        print(s)
 
 # Make sure nothing runs or prints out when this file is run as a module
 
 if __name__=="__main__":
-    #interactive_prompt()
-    res = process_command('regions sources bars_sold top=5')
+    interactive_prompt()
